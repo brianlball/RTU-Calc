@@ -304,21 +304,46 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
       #Make a new AirLoopHVAC:UnitarySystem object
       air_loop_hvac_unitary_system = OpenStudio::Model::AirLoopHVACUnitarySystem.new(model)
     
+      #initialize setpoint managers for heating and cooling coils
+      setpoint_mgr_cooling = OpenStudio::Model::SetpointManagerSingleZoneReheat.new(model)
+      setpoint_mgr_heating = OpenStudio::Model::SetpointManagerSingleZoneReheat.new(model)
+      
       # Find CAV fan and replace with VAV fan
       air_loop.supplyComponents.each do |supply_comp|
-        if supply_comp.to_FanConstantVolume.is_initialized
-         
+        # Identify original fan
+        found_fan = false
+         #get fan from unitaryheatpump
+        if supply_comp.to_AirLoopHVACUnitaryHeatPumpAirToAir.is_initialized        
+          orig_fan = supply_comp.to_AirLoopHVACUnitaryHeatPumpAirToAir.get.supplyAirFan
+          if orig_fan.to_FanConstantVolume.is_initialized
+            orig_fan = orig_fan.to_FanConstantVolume.get
+            found_fan = true
+          elsif orig_fan.to_FanOnOff.is_initialized
+            orig_fan = orig_fan.to_FanOnOff.get
+            found_fan = true
+          elsif orig_fan.to_FanVariableVolume.is_initialized
+            orig_fan = orig_fan.to_FanVariableVolume.get
+            found_fan = true
+          end
+        #get fan from main loop
+        elsif supply_comp.to_FanConstantVolume.is_initialized
+          orig_fan = supply_comp.to_FanConstantVolume.get
+          found_fan = true
+        elsif supply_comp.to_FanOnOff.is_initialized  
+          orig_fan = supply_comp.to_FanOnOff.get
+          found_fan = true
+        end    
+        if found_fan == true        
           # Preserve characteristics of the original fan
-          cav_fan = supply_comp.to_FanConstantVolume.get
-          fan_pressure_rise = cav_fan.pressureRise
-          fan_efficiency = cav_fan.fanEfficiency
-          motor_efficiency = cav_fan.motorEfficiency
-          fan_availability_schedule = cav_fan.availabilitySchedule
+          fan_pressure_rise = orig_fan.pressureRise
+          fan_efficiency = orig_fan.fanEfficiency
+          motor_efficiency = orig_fan.motorEfficiency
+          fan_availability_schedule = orig_fan.availabilitySchedule
           
           # Get the previous and next components on the loop     
-          prev_node = cav_fan.inletModelObject.get.to_Node.get        
-          next_node = cav_fan.outletModelObject.get.to_Node.get
-          
+          prev_node = orig_fan.inletModelObject.get.to_Node.get        
+          next_node = orig_fan.outletModelObject.get.to_Node.get
+         
           # Make the new vav_fan and transfer existing parameters to it
           vav_fan = OpenStudio::Model::FanVariableVolume.new(model, model.alwaysOnDiscreteSchedule)
           vav_fan.setPressureRise(fan_pressure_rise)
@@ -327,7 +352,7 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
           vav_fan.setAvailabilitySchedule(fan_availability_schedule)
           
           # Remove the supply fan
-          supply_comp.remove
+          orig_fan.remove
           
           # Get back the remaining node
           remaining_node = nil
@@ -359,22 +384,11 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
 
           #let the user know that a change was made
           changed_cav_to_vav = true
-          runner.registerInfo("AirLoop '#{air_loop.name}' was changed from CAV to VAV")
+          runner.registerInfo("AirLoop '#{air_loop.name}' was changed to VAV")
           
-        end
-      end #next supply component
-      
-      # Move on to the next air loop if no CAV to VAV change happened
-      next if not changed_cav_to_vav == true
-
-      #initialize COP variables to make available in both multi-speed heating and cooling coils
-      low_speed_cop = nil
-      high_speed_cop = nil
-      
-      #initialize setpoint managers for heating and cooling coils
-      setpoint_mgr_cooling = OpenStudio::Model::SetpointManagerSingleZoneReheat.new(model)
-      setpoint_mgr_heating = OpenStudio::Model::SetpointManagerSingleZoneReheat.new(model)
-      
+        end  #end orig fan
+      end #next supply component      
+    
       # Move the cooling coil to the AirLoopHVAC:UnitarySystem object
       air_loop.supplyComponents.each do |supply_comp|
         if supply_comp.to_CoilCoolingDXTwoSpeed.is_initialized
