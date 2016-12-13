@@ -303,7 +303,7 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
     
       #Make a new AirLoopHVAC:UnitarySystem object
       air_loop_hvac_unitary_system = OpenStudio::Model::AirLoopHVACUnitarySystem.new(model)
-      air_loop_hvac_unitary_system_second = OpenStudio::Model::AirLoopHVACUnitarySystem.new(model)
+      air_loop_hvac_unitary_system_cooling = OpenStudio::Model::AirLoopHVACUnitarySystem.new(model)
       
       #initialize setpoint managers for heating and cooling coils
       setpoint_mgr_cooling = OpenStudio::Model::SetpointManagerSingleZoneReheat.new(model)
@@ -347,7 +347,7 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
             new_cooling_coil.setFuelType("Electricity")
             new_cooling_coil.addStage(new_cooling_coil_data_1)
             new_cooling_coil.addStage(new_cooling_coil_data_2)
-            air_loop_hvac_unitary_system.setCoolingCoil(new_cooling_coil) 
+            air_loop_hvac_unitary_system_cooling.setCoolingCoil(new_cooling_coil) 
             # set node to setpoint_mgr_cooling
             #setpoint_mgr_cooling.addToNode(new_cooling_coil.outletModelObject.get.to_Node.get)
             # add EMS sensor
@@ -373,7 +373,7 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
             new_cooling_coil.addStage(new_cooling_coil_data_2)
             new_cooling_coil.addStage(new_cooling_coil_data_3)
             new_cooling_coil.addStage(new_cooling_coil_data_4)
-            air_loop_hvac_unitary_system.setCoolingCoil(new_cooling_coil)
+            air_loop_hvac_unitary_system_cooling.setCoolingCoil(new_cooling_coil)
             # add EMS sensor
             cc_sensor = OpenStudio::Model::EnergyManagementSystemSensor.new(model, "Cooling Coil Total Cooling Rate")
             cc_sensor.setKeyName(new_cooling_coil.handle.to_s)
@@ -464,7 +464,8 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
             runner.registerError("Couldn't add the new AirLoopHVAC:UnitarySystem object to the loop after removing existing CAV fan.")
             return false
           else
-            air_loop_hvac_unitary_system.addToNode(remaining_node)    
+            air_loop_hvac_unitary_system.addToNode(remaining_node) 
+            air_loop_hvac_unitary_system_cooling.addToNode(remaining_node)             
           end
           
           # Change the unitary system control type to setpoint to enable the VAV fan to ramp down.
@@ -531,7 +532,8 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
             runner.registerError("Couldn't add the new AirLoopHVAC:UnitarySystem object to the loop after removing existing CAV fan.")
             return false
           else
-            air_loop_hvac_unitary_system.addToNode(remaining_node)    
+            air_loop_hvac_unitary_system.addToNode(remaining_node)
+            air_loop_hvac_unitary_system_cooling.addToNode(remaining_node)            
           end
           
           # Change the unitary system control type to setpoint to enable the VAV fan to ramp down.
@@ -576,7 +578,7 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
             new_cooling_coil.setFuelType("Electricity")
             new_cooling_coil.addStage(new_cooling_coil_data_1)
             new_cooling_coil.addStage(new_cooling_coil_data_2)
-            air_loop_hvac_unitary_system.setCoolingCoil(new_cooling_coil) 
+            air_loop_hvac_unitary_system_cooling.setCoolingCoil(new_cooling_coil) 
             # set node to setpoint_mgr_cooling
             #setpoint_mgr_cooling.addToNode(new_cooling_coil.outletModelObject.get.to_Node.get)
             # add EMS sensor
@@ -602,7 +604,7 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
             new_cooling_coil.addStage(new_cooling_coil_data_2)
             new_cooling_coil.addStage(new_cooling_coil_data_3)
             new_cooling_coil.addStage(new_cooling_coil_data_4)
-            air_loop_hvac_unitary_system.setCoolingCoil(new_cooling_coil)
+            air_loop_hvac_unitary_system_cooling.setCoolingCoil(new_cooling_coil)
             # add EMS sensor
             cc_sensor = OpenStudio::Model::EnergyManagementSystemSensor.new(model, "Cooling Coil Total Cooling Rate")
             cc_sensor.setKeyName(new_cooling_coil.handle.to_s)
@@ -693,6 +695,7 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
           else
             # Associate the zone with the AirLoopHVAC:UnitarySystem object
             air_loop_hvac_unitary_system.setControllingZoneorThermostatLocation(term_zone)
+            air_loop_hvac_unitary_system_cooling.setControllingZoneorThermostatLocation(term_zone)
           end
         end  
       end

@@ -2,8 +2,8 @@
   <schema_version>3.0</schema_version>
   <name>create_variable_speed_rtu</name>
   <uid>7fb36b3a-5591-4627-a2b0-7709fbeae593</uid>
-  <version_id>21ebac0e-edaa-4f77-a0b9-08c9ca32d0b4</version_id>
-  <version_modified>20161213T232856Z</version_modified>
+  <version_id>f25d03b6-1377-458c-a8a5-45afd8ce340b</version_id>
+  <version_modified>20161213T235546Z</version_modified>
   <xml_checksum>A9D5932A</xml_checksum>
   <class_name>CreateVariableSpeedRTU</class_name>
   <display_name>Create Variable Speed RTU</display_name>
@@ -19,7 +19,7 @@
       <default_value>*All CAV Air Loops*</default_value>
       <choices>
         <choice>
-          <value>{feeb3244-db51-42be-bab1-26716f6d50f6}</value>
+          <value>{5c67cee1-5e9a-4d4e-a126-7f3f04c01711}</value>
           <display_name>*All CAV Air Loops*</display_name>
         </choice>
       </choices>
@@ -191,7 +191,7 @@
       <filename>measure.rb</filename>
       <filetype>rb</filetype>
       <usage_type>script</usage_type>
-      <checksum>B0157FE7</checksum>
+      <checksum>2D0F8F27</checksum>
     </file>
   </files>
 </measure>
