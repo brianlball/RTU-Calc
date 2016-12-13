@@ -71,8 +71,8 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
 
     #add building to string vector with air loops
     building = model.getBuilding
-    air_loop_handles << building.handle.to_s
-    air_loop_display_names << "*All CAV Air Loops*"
+    air_loop_handles.unshift(building.handle.to_s)
+    air_loop_display_names.unshift("*All CAV Air Loops*")
 
     #make an argument for air loops
     object = OpenStudio::Ruleset::OSArgument::makeChoiceArgument("object", air_loop_handles, air_loop_display_names,true)
@@ -253,21 +253,6 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
       return false
     end
     
-    # Report initial condition of model
-    initial_cav_airloops = 0
-    initial_vav_airloops = 0
-    model.getAirLoopHVACs.each do |air_loop|
-      # Loop through all supply components on the airloop and find CAV and VAV fans
-      air_loop.supplyComponents.each do |supply_comp|
-        if supply_comp.to_FanConstantVolume.is_initialized
-          initial_cav_airloops += 1
-        elsif supply_comp.to_FanVariableVolume.is_initialized
-          initial_vav_airloops += 1
-        end
-      end
-    end
-    runner.registerInitialCondition("The building started with #{initial_cav_airloops} CAV air loops and #{initial_vav_airloops} VAV air loops.")
-    
     # Check the air loop selection
     apply_to_all_air_loops = false
     selected_airloop = nil
@@ -290,13 +275,16 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
       end
     end  #end of if object.empty?
     
+    # Report initial condition of model
+    air_loop_handles = OpenStudio::StringVector.new
+    air_loop_display_names = OpenStudio::StringVector.new
+    air_loop_display_names, air_loop_handles = airloop_chooser(model)
+    runner.registerInitialCondition("The building started with #{air_loop_handles.size} constant-speed RTUs.") 
+    
     # Add selected airloops to an array
     selected_airloops = [] 
     if apply_to_all_air_loops == true
       #limit all airloops to only those that are appropriate
-      air_loop_handles = OpenStudio::StringVector.new
-      air_loop_display_names = OpenStudio::StringVector.new
-      air_loop_display_names, air_loop_handles = airloop_chooser(model)
       all_airloops = []      
       all_airloops = model.getAirLoopHVACs
       all_airloops.each do |airloop|
@@ -532,21 +520,12 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
     end # Next selected airloop
 
     # Report final condition of model
-    final_cav_airloops = 0
-    final_vav_airloops = 0
-    model.getAirLoopHVACs.each do |air_loop|
-      # Loop through all supply components on the airloop and find CAV and VAV fans
-      air_loop.supplyComponents.each do |supply_comp|
-        if supply_comp.to_FanConstantVolume.is_initialized
-          final_cav_airloops += 1
-        elsif supply_comp.to_AirLoopHVACUnitarySystem.is_initialized
-          final_vav_airloops += 1
-        end
-      end
-    end
-    runner.registerFinalCondition("The building finished with #{final_cav_airloops} constant-speed RTUs and #{final_vav_airloops} multi-speed RTUs.")
+    final_air_loop_handles = OpenStudio::StringVector.new
+    final_air_loop_display_names = OpenStudio::StringVector.new
+    final_air_loop_display_names, final_air_loop_handles = airloop_chooser(model)
+    runner.registerFinalCondition("The building finished with #{final_air_loop_handles.size} constant-speed RTUs.") 
     
-    if final_cav_airloops == initial_cav_airloops 
+    if final_air_loop_handles.size == air_loop_handles.size
       runner.registerAsNotApplicable("This measure is not applicable; no variable speed RTUs were added.")
     end
    
