@@ -309,11 +309,9 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
       setpoint_mgr_cooling = OpenStudio::Model::SetpointManagerSingleZoneReheat.new(model)
       setpoint_mgr_heating = OpenStudio::Model::SetpointManagerSingleZoneReheat.new(model)
       
-      # Find CAV fan and replace with VAV fan
-      air_loop.supplyComponents.each do |supply_comp|
-        # Identify original fan from unitaryheatpump
-        if supply_comp.to_AirLoopHVACUnitaryHeatPumpAirToAir.is_initialized        
-          
+     # Identify original AirLoopHVACUnitaryHeatPumpAirToAir
+      air_loop.supplyComponents.each do |supply_comp|      
+        if supply_comp.to_AirLoopHVACUnitaryHeatPumpAirToAir.is_initialized           
           existing_fan = supply_comp.to_AirLoopHVACUnitaryHeatPumpAirToAir.get.supplyAirFan
           if existing_fan.to_FanConstantVolume.is_initialized
             existing_fan = existing_fan.to_FanConstantVolume.get
@@ -394,8 +392,7 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
           if heating_coil_type == "Gas Heating Coil"
             new_heating_coil = OpenStudio::Model::CoilHeatingGas.new(model)                    
             new_heating_coil.setGasBurnerEfficiency(rated_hc_gas_efficiency.to_f)
-            air_loop_hvac_unitary_system.setHeatingCoil(new_heating_coil)   
-            
+            air_loop_hvac_unitary_system.setHeatingCoil(new_heating_coil)      
           elsif heating_coil_type == "Heat Pump" && cooling_coil_type == "Two-Stage Compressor"
             new_heating_coil = OpenStudio::Model::CoilHeatingDXMultiSpeed.new(model)
             new_heating_coil_data_1 = OpenStudio::Model::CoilHeatingDXMultiSpeedStageData.new(model)
@@ -487,8 +484,9 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
           runner.registerInfo("AirLoop '#{air_loop.name}' was changed to VAV")
           
         end  #end orig fan
-      end #next supply component      
-      # Find CAV fan and replace with VAV fan
+      end #next supply component
+      
+      # Find CAV/OnOff fan and replace with VAV fan
       air_loop.supplyComponents.each do |supply_comp|
         # Identify original fan from loop
         found_fan = false
@@ -553,13 +551,18 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
           runner.registerInfo("AirLoop '#{air_loop.name}' was changed to VAV")
           
         end  #end orig fan
-      end #next supply component   
+
       
       # Move the cooling coil to the AirLoopHVAC:UnitarySystem object
-      air_loop.supplyComponents.each do |supply_comp|
-        if supply_comp.to_CoilCoolingDXTwoSpeed.is_initialized
-          
-          existing_cooling_coil = supply_comp.to_CoilCoolingDXTwoSpeed.get
+        if supply_comp.to_CoilCoolingDXTwoSpeed.is_initialized || supply_comp.to_CoilCoolingDXSingleSpeed.is_initialized
+          #if supply_comp.to_CoilCoolingDXTwoSpeed.is_initialized
+          #  existing_cooling_coil = supply_comp.to_CoilCoolingDXTwoSpeed.get
+          #elsif supply_comp.to_CoilCoolingDXSingleSpeed.is_initialized
+          #  existing_cooling_coil = supply_comp.to_CoilCoolingDXSingleSpeed.get
+          #end
+          existing_cooling_coil = supply_comp
+          # Remove the existing heating coil.
+          existing_cooling_coil.remove
           
           # Add a new cooling coil object
           if cooling_coil_type == "Two-Stage Compressor"
@@ -604,19 +607,17 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
             cc_sensor = OpenStudio::Model::EnergyManagementSystemSensor.new(model, "Cooling Coil Total Cooling Rate")
             cc_sensor.setKeyName(new_cooling_coil.handle.to_s)
             cc_sensor.setName("#{new_cooling_coil.name.to_s}_cooling_rate")             
-          end 
-          
-          # Remove the existing cooling coil.
-          existing_cooling_coil.remove          
-        end
-      end #next supply component
+          end          
+        end  #end cooling coil
       
       # Move the heating coil to the AirLoopHVAC:UnitarySystem object
-      air_loop.supplyComponents.each do |supply_comp|  
-        if supply_comp.to_CoilHeatingGas.is_initialized
-          
-          existing_heating_coil = supply_comp.to_CoilHeatingGas.get
-          
+        if supply_comp.to_CoilHeatingGas.is_initialized || supply_comp.to_CoilHeatingDXSingleSpeed.is_initialized
+          #if supply_comp.to_CoilHeatingGas.is_initialized
+          #  existing_heating_coil = supply_comp.to_CoilHeatingGas.get
+          #elsif supply_comp.to_CoilHeatingDXSingleSpeed.is_initialized
+          #  existing_heating_coil = supply_comp.to_CoilHeatingDXSingleSpeed.get
+          #end
+          existing_heating_coil = supply_comp
           # Remove the existing heating coil.
           existing_heating_coil.remove
 
@@ -624,8 +625,7 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
           if heating_coil_type == "Gas Heating Coil"
             new_heating_coil = OpenStudio::Model::CoilHeatingGas.new(model)                    
             new_heating_coil.setGasBurnerEfficiency(rated_hc_gas_efficiency.to_f)
-            air_loop_hvac_unitary_system.setHeatingCoil(new_heating_coil)   
-            
+            air_loop_hvac_unitary_system.setHeatingCoil(new_heating_coil)               
           elsif heating_coil_type == "Heat Pump" && cooling_coil_type == "Two-Stage Compressor"
             new_heating_coil = OpenStudio::Model::CoilHeatingDXMultiSpeed.new(model)
             new_heating_coil_data_1 = OpenStudio::Model::CoilHeatingDXMultiSpeedStageData.new(model)
@@ -653,7 +653,7 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
             new_heating_coil.addStage(new_heating_coil_data_4)
             air_loop_hvac_unitary_system.setHeatingCoil(new_heating_coil)
           end         
-        end
+        end  #end heating coil
          
       end #next supply component
       
