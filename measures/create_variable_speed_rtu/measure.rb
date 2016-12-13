@@ -293,7 +293,17 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
     # Add selected airloops to an array
     selected_airloops = [] 
     if apply_to_all_air_loops == true
-       selected_airloops = model.getAirLoopHVACs
+      #limit all airloops to only those that are appropriate
+      air_loop_handles = OpenStudio::StringVector.new
+      air_loop_display_names = OpenStudio::StringVector.new
+      air_loop_display_names, air_loop_handles = airloop_chooser(model)
+      all_airloops = []      
+      all_airloops = model.getAirLoopHVACs
+      all_airloops.each do |airloop|
+        if air_loop_handles.include? airloop.handle.to_s
+          selected_airloops << airloop
+        end
+      end
     else
       selected_airloops << selected_airloop
     end
@@ -301,67 +311,67 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
     # Change CAV to VAV on the selected airloops, where applicable
     selected_airloops.each do |air_loop|
          
-    changed_cav_to_vav = false
+      changed_cav_to_vav = false
     
-    #Make a new AirLoopHVAC:UnitarySystem object
-    air_loop_hvac_unitary_system = OpenStudio::Model::AirLoopHVACUnitarySystem.new(model)
+      #Make a new AirLoopHVAC:UnitarySystem object
+      air_loop_hvac_unitary_system = OpenStudio::Model::AirLoopHVACUnitarySystem.new(model)
     
-    # Find CAV fan and replace with VAV fan
-    air_loop.supplyComponents.each do |supply_comp|
-      if supply_comp.to_FanConstantVolume.is_initialized
+      # Find CAV fan and replace with VAV fan
+      air_loop.supplyComponents.each do |supply_comp|
+        if supply_comp.to_FanConstantVolume.is_initialized
          
-	# Preserve characteristics of the original fan
-        cav_fan = supply_comp.to_FanConstantVolume.get
-        fan_pressure_rise = cav_fan.pressureRise
-        fan_efficiency = cav_fan.fanEfficiency
-        motor_efficiency = cav_fan.motorEfficiency
-        fan_availability_schedule = cav_fan.availabilitySchedule
-        
-        # Get the previous and next components on the loop     
-        prev_node = cav_fan.inletModelObject.get.to_Node.get        
-        next_node = cav_fan.outletModelObject.get.to_Node.get
-        
-        # Make the new vav_fan and transfer existing parameters to it
-        vav_fan = OpenStudio::Model::FanVariableVolume.new(model, model.alwaysOnDiscreteSchedule)
-        vav_fan.setPressureRise(fan_pressure_rise)
-        vav_fan.setFanEfficiency(fan_efficiency)
-        vav_fan.setMotorEfficiency(motor_efficiency)
-        vav_fan.setAvailabilitySchedule(fan_availability_schedule)
-        
-        # Remove the supply fan
-        supply_comp.remove
-        
-        # Get back the remaining node
-        remaining_node = nil
-        if prev_node.outletModelObject.is_initialized
-          remaining_node = prev_node
-        elsif next_node.inletModelObject.is_initialized
-          remaining_node = next_node
-        end
-           
-        # Add a new AirLoopHVAC:UnitarySystem object to the node where the old fan was
-        if remaining_node.nil?
-          runner.registerError("Couldn't add the new AirLoopHVAC:UnitarySystem object to the loop after removing existing CAV fan.")
-          return false
-        else
-          air_loop_hvac_unitary_system.addToNode(remaining_node)    
-        end
-        
-        # Change the unitary system control type to setpoint to enable the VAV fan to ramp down.
-        air_loop_hvac_unitary_system.setString(2,"Setpoint")
-        
-        # Add the VAV fan to the AirLoopHVAC:UnitarySystem object
-        air_loop_hvac_unitary_system.setSupplyFan(vav_fan)
-        
-        # Set the AirLoopHVAC:UnitarySystem fan placement
-        air_loop_hvac_unitary_system.setFanPlacement("BlowThrough")
-        
-        # Set the AirLoopHVAC:UnitarySystem Supply Air Fan Operating Mode Schedule
-        air_loop_hvac_unitary_system.setSupplyAirFanOperatingModeSchedule(model.alwaysOnDiscreteSchedule)
+          # Preserve characteristics of the original fan
+          cav_fan = supply_comp.to_FanConstantVolume.get
+          fan_pressure_rise = cav_fan.pressureRise
+          fan_efficiency = cav_fan.fanEfficiency
+          motor_efficiency = cav_fan.motorEfficiency
+          fan_availability_schedule = cav_fan.availabilitySchedule
+          
+          # Get the previous and next components on the loop     
+          prev_node = cav_fan.inletModelObject.get.to_Node.get        
+          next_node = cav_fan.outletModelObject.get.to_Node.get
+          
+          # Make the new vav_fan and transfer existing parameters to it
+          vav_fan = OpenStudio::Model::FanVariableVolume.new(model, model.alwaysOnDiscreteSchedule)
+          vav_fan.setPressureRise(fan_pressure_rise)
+          vav_fan.setFanEfficiency(fan_efficiency)
+          vav_fan.setMotorEfficiency(motor_efficiency)
+          vav_fan.setAvailabilitySchedule(fan_availability_schedule)
+          
+          # Remove the supply fan
+          supply_comp.remove
+          
+          # Get back the remaining node
+          remaining_node = nil
+          if prev_node.outletModelObject.is_initialized
+            remaining_node = prev_node
+          elsif next_node.inletModelObject.is_initialized
+            remaining_node = next_node
+          end
+             
+          # Add a new AirLoopHVAC:UnitarySystem object to the node where the old fan was
+          if remaining_node.nil?
+            runner.registerError("Couldn't add the new AirLoopHVAC:UnitarySystem object to the loop after removing existing CAV fan.")
+            return false
+          else
+            air_loop_hvac_unitary_system.addToNode(remaining_node)    
+          end
+          
+          # Change the unitary system control type to setpoint to enable the VAV fan to ramp down.
+          air_loop_hvac_unitary_system.setString(2,"Setpoint")
+          
+          # Add the VAV fan to the AirLoopHVAC:UnitarySystem object
+          air_loop_hvac_unitary_system.setSupplyFan(vav_fan)
+          
+          # Set the AirLoopHVAC:UnitarySystem fan placement
+          air_loop_hvac_unitary_system.setFanPlacement("BlowThrough")
+          
+          # Set the AirLoopHVAC:UnitarySystem Supply Air Fan Operating Mode Schedule
+          air_loop_hvac_unitary_system.setSupplyAirFanOperatingModeSchedule(model.alwaysOnDiscreteSchedule)
 
-        #let the user know that a change was made
-        changed_cav_to_vav = true
-        runner.registerInfo("AirLoop '#{air_loop.name}' was changed from CAV to VAV")
+          #let the user know that a change was made
+          changed_cav_to_vav = true
+          runner.registerInfo("AirLoop '#{air_loop.name}' was changed from CAV to VAV")
           
         end
       end #next supply component
@@ -397,7 +407,7 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
             new_cooling_coil.addStage(new_cooling_coil_data_2)
             air_loop_hvac_unitary_system.setCoolingCoil(new_cooling_coil) 
             # set node to setpoint_mgr_cooling
-            setpoint_mgr_cooling.addToNode(new_cooling_coil.outletModelObject.get.to_Node.get)
+            #setpoint_mgr_cooling.addToNode(new_cooling_coil.outletModelObject.get.to_Node.get)
             # add EMS sensor
             cc_sensor = OpenStudio::Model::EnergyManagementSystemSensor.new(model, "Cooling Coil Total Cooling Rate")
             cc_sensor.setKeyName(new_cooling_coil.handle.to_s)
