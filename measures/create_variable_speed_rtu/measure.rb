@@ -306,7 +306,7 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
       selected_airloops << selected_airloop
     end
     
-    # Change CAV to VAV on the selected airloops, where applicable
+    # Change HeatPumpAirToAir to VAV on the selected airloops, where applicable
     selected_airloops.each do |air_loop|
          
       changed_cav_to_vav = false
@@ -357,8 +357,6 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
             new_cooling_coil.addStage(new_cooling_coil_data_1)
             new_cooling_coil.addStage(new_cooling_coil_data_2)
             air_loop_hvac_unitary_system_cooling.setCoolingCoil(new_cooling_coil) 
-            # set node to setpoint_mgr_cooling
-            #setpoint_mgr_cooling.addToNode(new_cooling_coil.outletModelObject.get.to_Node.get)
             # add EMS sensor
             cc_sensor = OpenStudio::Model::EnergyManagementSystemSensor.new(model, "Cooling Coil Total Cooling Rate")
             cc_sensor.setKeyName(new_cooling_coil.handle.to_s)
@@ -474,16 +472,12 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
             return false
           else
             air_loop_hvac_unitary_system.addToNode(remaining_node)
-            #setpoint_mgr_heating.addToNode(remaining_node)
-            #runner.registerInfo("stp mgr: #{remaining_node.setpointManagers[0].name} on node #{remaining_node.name}")
-            air_loop_hvac_unitary_system_cooling.addToNode(remaining_node)
-            #setpoint_mgr_cooling.addToNode(remaining_node)  
-            #runner.registerInfo("stp mgr: #{remaining_node.setpointManagers[0].name} on node #{remaining_node.name}")           
+            air_loop_hvac_unitary_system_cooling.addToNode(remaining_node)           
           end
           
           # Change the unitary system control type to setpoint to enable the VAV fan to ramp down.
           air_loop_hvac_unitary_system.setString(2,"Setpoint")
-          
+          air_loop_hvac_unitary_system_cooling.setString(2,"Setpoint") 
           # Add the VAV fan to the AirLoopHVAC:UnitarySystem object
           air_loop_hvac_unitary_system.setSupplyFan(vav_fan)
           
@@ -546,18 +540,12 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
             return false
           else
             air_loop_hvac_unitary_system.addToNode(remaining_node)
-            runner.registerInfo("air_loop_hvac_unitary_system: #{air_loop_hvac_unitary_system.outletModelObject.to_s}")
-            #setpoint_mgr_heating.addToNode(remaining_node)
-            #runner.registerInfo("stp mgr: #{remaining_node.setpointManagers[0].name} on node #{remaining_node.name}")
-            air_loop_hvac_unitary_system_cooling.addToNode(remaining_node)
-            runner.registerInfo("air_loop_hvac_unitary_system_cooling: #{air_loop_hvac_unitary_system.outletModelObject.to_s}")
-            #setpoint_mgr_cooling.addToNode(remaining_node)   
-            #runner.registerInfo("stp mgr: #{remaining_node.setpointManagers[0].name} on node #{remaining_node.name}")            
+            air_loop_hvac_unitary_system_cooling.addToNode(remaining_node)           
           end
           
           # Change the unitary system control type to setpoint to enable the VAV fan to ramp down.
           air_loop_hvac_unitary_system.setString(2,"Setpoint")
-          
+          air_loop_hvac_unitary_system_cooling.setString(2,"Setpoint") 
           # Add the VAV fan to the AirLoopHVAC:UnitarySystem object
           air_loop_hvac_unitary_system.setSupplyFan(vav_fan)
           
@@ -598,8 +586,6 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
             new_cooling_coil.addStage(new_cooling_coil_data_1)
             new_cooling_coil.addStage(new_cooling_coil_data_2)
             air_loop_hvac_unitary_system_cooling.setCoolingCoil(new_cooling_coil) 
-            # set node to setpoint_mgr_cooling
-            #setpoint_mgr_cooling.addToNode(new_cooling_coil.outletModelObject.get.to_Node.get)
             # add EMS sensor
             cc_sensor = OpenStudio::Model::EnergyManagementSystemSensor.new(model, "Cooling Coil Total Cooling Rate")
             cc_sensor.setKeyName(new_cooling_coil.handle.to_s)
@@ -684,15 +670,18 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
       # Identify if there is a setpoint manager on the AirLoop outlet node
       if airloop_outlet_node.setpointManagers.size >0
         setpoint_manager = airloop_outlet_node.setpointManagers[0]
-        runner.registerInfo("Setpoint manager on node '#{airloop_outlet_node.name}' is '#{setpoint_manager.name}'.")
-        #setpoint_manager.remove
+        runner.registerInfo("Setpoint manager on node '#{airloop_outlet_node.name}' is '#{setpoint_manager.name}'.")        
         #setpoint_mgr_cooling.setMaximumSupplyAirTemperature(setpoint_manager.maximumSupplyAirTemperature)
         #setpoint_mgr_cooling.setMinimumSupplyAirTemperature(setpoint_manager.minimumSupplyAirTemperature)
         #setpoint_mgr_heating.setMaximumSupplyAirTemperature(setpoint_manager.maximumSupplyAirTemperature)
         #setpoint_mgr_heating.setMinimumSupplyAirTemperature(setpoint_manager.minimumSupplyAirTemperature)
+        setpoint_manager.remove
       else
         runner.registerInfo("No setpoint manager on node '#{airloop_outlet_node.name}'.")
       end
+      #attach setpoint managers now that everything else is deleted
+      setpoint_mgr_heating.addToNode(air_loop_hvac_unitary_system.airOutletModelObject.get.to_Node.get)
+      setpoint_mgr_cooling.addToNode(air_loop_hvac_unitary_system_cooling.airOutletModelObject.get.to_Node.get)
       
       # Set the controlling zone location to the zone on the airloop
       air_loop.demandComponents.each do |demand_comp|
