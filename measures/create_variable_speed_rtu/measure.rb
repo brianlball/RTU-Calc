@@ -432,9 +432,17 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
           if supplementalHeat.to_CoilHeatingElectric.is_initialized
             supplementalHeat = supply_comp.to_AirLoopHVACUnitaryHeatPumpAirToAir.get.supplementalHeatingCoil.to_CoilHeatingElectric.get
             air_loop_hvac_unitary_system.setSupplementalHeatingCoil(supplementalHeat)
+            runner.registerInfo("supplementalHeat #{air_loop_hvac_unitary_system.supplementalHeatingCoil.get.to_s}")
+            #set heatpump supplemental to a temp coil
+            temp = OpenStudio::Model::CoilHeatingGas.new(model)
+            supply_comp.to_AirLoopHVACUnitaryHeatPumpAirToAir.get.setSupplementalHeatingCoil(temp)
           elsif supplementalHeat.to_CoilHeatingGas.is_initialized
             supplementalHeat = supply_comp.to_AirLoopHVACUnitaryHeatPumpAirToAir.get.supplementalHeatingCoil.to_CoilHeatingGas.get
             air_loop_hvac_unitary_system.setSupplementalHeatingCoil(supplementalHeat)
+            runner.registerInfo("supplementalHeat #{air_loop_hvac_unitary_system.supplementalHeatingCoil.get.to_s}")
+            #set heatpump supplemental to a temp coil
+            temp = OpenStudio::Model::CoilHeatingGas.new(model)
+            supply_comp.to_AirLoopHVACUnitaryHeatPumpAirToAir.get.setSupplementalHeatingCoil(temp)
           end
           runner.registerInfo("supplementalHeat #{supplementalHeat.to_s}")
           
@@ -449,6 +457,9 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
           vav_fan.setMotorEfficiency(motor_efficiency)
           vav_fan.setAvailabilitySchedule(fan_availability_schedule)
           
+          ems_fan_internal = OpenStudio::Model::EnergyManagementSystemInternalVariable.new(model, "Fan Maximum Mass Flow Rate")
+          ems_fan_internal.setName("#{vav_fan.name}_mass_flow_rate")
+          ems_fan_internal.setInternalDataIndexKeyName("#{vav_fan.name}")
           # Remove the supply fan
           existing_fan.remove
           # Remove the existing cooling coil.
@@ -670,7 +681,6 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
       # Identify if there is a setpoint manager on the AirLoop outlet node
       if airloop_outlet_node.setpointManagers.size >0
         setpoint_manager = airloop_outlet_node.setpointManagers[0]
-        #TODO will this always be a singlezonereheat??
         setpoint_manager = setpoint_manager.to_SetpointManagerSingleZoneReheat.get
         runner.registerInfo("Setpoint manager on node '#{airloop_outlet_node.name}' is '#{setpoint_manager.name}'.")        
         setpoint_mgr_cooling.setMaximumSupplyAirTemperature(setpoint_manager.maximumSupplyAirTemperature)
