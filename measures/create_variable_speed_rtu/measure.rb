@@ -670,11 +670,13 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
       # Identify if there is a setpoint manager on the AirLoop outlet node
       if airloop_outlet_node.setpointManagers.size >0
         setpoint_manager = airloop_outlet_node.setpointManagers[0]
+        #TODO will this always be a singlezonereheat??
+        setpoint_manager = setpoint_manager.to_SetpointManagerSingleZoneReheat.get
         runner.registerInfo("Setpoint manager on node '#{airloop_outlet_node.name}' is '#{setpoint_manager.name}'.")        
-        #setpoint_mgr_cooling.setMaximumSupplyAirTemperature(setpoint_manager.maximumSupplyAirTemperature)
-        #setpoint_mgr_cooling.setMinimumSupplyAirTemperature(setpoint_manager.minimumSupplyAirTemperature)
-        #setpoint_mgr_heating.setMaximumSupplyAirTemperature(setpoint_manager.maximumSupplyAirTemperature)
-        #setpoint_mgr_heating.setMinimumSupplyAirTemperature(setpoint_manager.minimumSupplyAirTemperature)
+        setpoint_mgr_cooling.setMaximumSupplyAirTemperature(setpoint_manager.maximumSupplyAirTemperature)
+        setpoint_mgr_cooling.setMinimumSupplyAirTemperature(setpoint_manager.minimumSupplyAirTemperature)
+        setpoint_mgr_heating.setMaximumSupplyAirTemperature(setpoint_manager.maximumSupplyAirTemperature)
+        setpoint_mgr_heating.setMinimumSupplyAirTemperature(setpoint_manager.minimumSupplyAirTemperature)
         setpoint_manager.remove
       else
         runner.registerInfo("No setpoint manager on node '#{airloop_outlet_node.name}'.")
@@ -706,7 +708,7 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
             runner.registerWarning("Could not determine the zone for terminal '#{new_vav_terminal.name}', cannot assign to AirLoopHVAC:UnitarySystem object.")
             next
           else
-            # Associate the zone with the AirLoopHVAC:UnitarySystem object
+            # Associate the zone with the AirLoopHVAC:UnitarySystem object and setpoint managers
             air_loop_hvac_unitary_system.setControllingZoneorThermostatLocation(term_zone)
             air_loop_hvac_unitary_system_cooling.setControllingZoneorThermostatLocation(term_zone)
             setpoint_mgr_cooling.setControlZone(term_zone)
