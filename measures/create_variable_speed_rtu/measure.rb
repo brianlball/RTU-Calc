@@ -40,11 +40,21 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
             found_good = false
             found_bad = false
             air_loop.supplyComponents.each do |sc|
-              if sc.to_CoilHeatingGas.is_initialized || sc.to_CoilHeatingDXSingleSpeed.is_initialized  || sc.to_AirLoopHVACUnitaryHeatPumpAirToAir.is_initialized
+              if sc.to_CoilHeatingGas.is_initialized || sc.to_CoilHeatingDXSingleSpeed.is_initialized
                 found_good = true
               end
               if sc.to_CoilHeatingWater.is_initialized || sc.to_CoilHeatingWaterToAirHeatPumpEquationFit.is_initialized || sc.to_CoilCoolingWater.is_initialized || sc.to_CoilCoolingWaterToAirHeatPumpEquationFit.is_initialized
                 found_bad = true
+              end
+              if sc.to_AirLoopHVACUnitaryHeatPumpAirToAir.is_initialized
+                cc = sc.to_AirLoopHVACUnitaryHeatPumpAirToAir.get.coolingCoil
+                hc = sc.to_AirLoopHVACUnitaryHeatPumpAirToAir.get.heatingCoil
+                if hc.to_CoilHeatingGas.is_initialized || hc.to_CoilHeatingDXSingleSpeed.is_initialized
+                  found_good = true
+                end
+                if hc.to_CoilHeatingWater.is_initialized || hc.to_CoilHeatingWaterToAirHeatPumpEquationFit.is_initialized || cc.to_CoilCoolingWater.is_initialized || cc.to_CoilCoolingWaterToAirHeatPumpEquationFit.is_initialized
+                  found_bad = true
+                end
               end
             end
             #if good is true and bad is false
@@ -304,11 +314,10 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
       #Make a new AirLoopHVAC:UnitarySystem object
       air_loop_hvac_unitary_system = OpenStudio::Model::AirLoopHVACUnitarySystem.new(model)
       air_loop_hvac_unitary_system_cooling = OpenStudio::Model::AirLoopHVACUnitarySystem.new(model)
-      
-      #initialize setpoint managers for heating and cooling coils
+      #initialize new setpoint managers for heating and cooling coils
       setpoint_mgr_cooling = OpenStudio::Model::SetpointManagerSingleZoneReheat.new(model)
       setpoint_mgr_heating = OpenStudio::Model::SetpointManagerSingleZoneReheat.new(model)
-      
+  
      # Identify original AirLoopHVACUnitaryHeatPumpAirToAir
       air_loop.supplyComponents.each do |supply_comp|      
         if supply_comp.to_AirLoopHVACUnitaryHeatPumpAirToAir.is_initialized           
@@ -464,8 +473,12 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
             runner.registerError("Couldn't add the new AirLoopHVAC:UnitarySystem object to the loop after removing existing CAV fan.")
             return false
           else
-            air_loop_hvac_unitary_system.addToNode(remaining_node) 
-            air_loop_hvac_unitary_system_cooling.addToNode(remaining_node)             
+            air_loop_hvac_unitary_system.addToNode(remaining_node)
+            #setpoint_mgr_heating.addToNode(remaining_node)
+            #runner.registerInfo("stp mgr: #{remaining_node.setpointManagers[0].name} on node #{remaining_node.name}")
+            air_loop_hvac_unitary_system_cooling.addToNode(remaining_node)
+            #setpoint_mgr_cooling.addToNode(remaining_node)  
+            #runner.registerInfo("stp mgr: #{remaining_node.setpointManagers[0].name} on node #{remaining_node.name}")           
           end
           
           # Change the unitary system control type to setpoint to enable the VAV fan to ramp down.
@@ -533,7 +546,13 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
             return false
           else
             air_loop_hvac_unitary_system.addToNode(remaining_node)
-            air_loop_hvac_unitary_system_cooling.addToNode(remaining_node)            
+            runner.registerInfo("air_loop_hvac_unitary_system: #{air_loop_hvac_unitary_system.outletModelObject.to_s}")
+            #setpoint_mgr_heating.addToNode(remaining_node)
+            #runner.registerInfo("stp mgr: #{remaining_node.setpointManagers[0].name} on node #{remaining_node.name}")
+            air_loop_hvac_unitary_system_cooling.addToNode(remaining_node)
+            runner.registerInfo("air_loop_hvac_unitary_system_cooling: #{air_loop_hvac_unitary_system.outletModelObject.to_s}")
+            #setpoint_mgr_cooling.addToNode(remaining_node)   
+            #runner.registerInfo("stp mgr: #{remaining_node.setpointManagers[0].name} on node #{remaining_node.name}")            
           end
           
           # Change the unitary system control type to setpoint to enable the VAV fan to ramp down.
@@ -665,11 +684,16 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
       # Identify if there is a setpoint manager on the AirLoop outlet node
       if airloop_outlet_node.setpointManagers.size >0
         setpoint_manager = airloop_outlet_node.setpointManagers[0]
-        #runner.registerInfo("Setpoint manager on node '#{airloop_outlet_node.name}' is '#{setpoint_manager.name}'.")
+        runner.registerInfo("Setpoint manager on node '#{airloop_outlet_node.name}' is '#{setpoint_manager.name}'.")
+        #setpoint_manager.remove
+        #setpoint_mgr_cooling.setMaximumSupplyAirTemperature(setpoint_manager.maximumSupplyAirTemperature)
+        #setpoint_mgr_cooling.setMinimumSupplyAirTemperature(setpoint_manager.minimumSupplyAirTemperature)
+        #setpoint_mgr_heating.setMaximumSupplyAirTemperature(setpoint_manager.maximumSupplyAirTemperature)
+        #setpoint_mgr_heating.setMinimumSupplyAirTemperature(setpoint_manager.minimumSupplyAirTemperature)
       else
         runner.registerInfo("No setpoint manager on node '#{airloop_outlet_node.name}'.")
       end
-
+      
       # Set the controlling zone location to the zone on the airloop
       air_loop.demandComponents.each do |demand_comp|
         if demand_comp.to_AirTerminalSingleDuctUncontrolled.is_initialized 
@@ -696,6 +720,8 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
             # Associate the zone with the AirLoopHVAC:UnitarySystem object
             air_loop_hvac_unitary_system.setControllingZoneorThermostatLocation(term_zone)
             air_loop_hvac_unitary_system_cooling.setControllingZoneorThermostatLocation(term_zone)
+            setpoint_mgr_cooling.setControlZone(term_zone)
+            setpoint_mgr_heating.setControlZone(term_zone)
           end
         end  
       end
