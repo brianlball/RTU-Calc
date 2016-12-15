@@ -314,9 +314,11 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
       #Make a new AirLoopHVAC:UnitarySystem object
       air_loop_hvac_unitary_system = OpenStudio::Model::AirLoopHVACUnitarySystem.new(model)
       air_loop_hvac_unitary_system_cooling = OpenStudio::Model::AirLoopHVACUnitarySystem.new(model)
+      air_loop_hvac_unitary_system_heating = OpenStudio::Model::AirLoopHVACUnitarySystem.new(model)
       #initialize new setpoint managers for heating and cooling coils
       setpoint_mgr_cooling = OpenStudio::Model::SetpointManagerSingleZoneReheat.new(model)
       setpoint_mgr_heating = OpenStudio::Model::SetpointManagerSingleZoneReheat.new(model)
+      setpoint_mgr_heating_sup = OpenStudio::Model::SetpointManagerSingleZoneReheat.new(model)
       #EMS initialize program
       term_zone_handle = nil
       term_zone_name = nil
@@ -463,15 +465,15 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
           supplementalHeat = supply_comp.to_AirLoopHVACUnitaryHeatPumpAirToAir.get.supplementalHeatingCoil
           if supplementalHeat.to_CoilHeatingElectric.is_initialized
             supplementalHeat = supply_comp.to_AirLoopHVACUnitaryHeatPumpAirToAir.get.supplementalHeatingCoil.to_CoilHeatingElectric.get
-            air_loop_hvac_unitary_system.setSupplementalHeatingCoil(supplementalHeat)
-            runner.registerInfo("supplementalHeat #{air_loop_hvac_unitary_system.supplementalHeatingCoil.get.to_s}")
+            air_loop_hvac_unitary_system_heating.setHeatingCoil(supplementalHeat)
+            runner.registerInfo("supplementalHeat #{air_loop_hvac_unitary_system_heating.heatingCoil.get.to_s}")
             #set heatpump supplemental to a temp coil
             temp = OpenStudio::Model::CoilHeatingGas.new(model)
             supply_comp.to_AirLoopHVACUnitaryHeatPumpAirToAir.get.setSupplementalHeatingCoil(temp)
           elsif supplementalHeat.to_CoilHeatingGas.is_initialized
             supplementalHeat = supply_comp.to_AirLoopHVACUnitaryHeatPumpAirToAir.get.supplementalHeatingCoil.to_CoilHeatingGas.get
-            air_loop_hvac_unitary_system.setSupplementalHeatingCoil(supplementalHeat)
-            runner.registerInfo("supplementalHeat #{air_loop_hvac_unitary_system.supplementalHeatingCoil.get.to_s}")
+            air_loop_hvac_unitary_system_heating.setHeatingCoil(supplementalHeat)
+            runner.registerInfo("supplementalHeat #{air_loop_hvac_unitary_system_heating.heatingCoil.get.to_s}")
             #set heatpump supplemental to a temp coil
             temp = OpenStudio::Model::CoilHeatingGas.new(model)
             supply_comp.to_AirLoopHVACUnitaryHeatPumpAirToAir.get.setSupplementalHeatingCoil(temp)
@@ -524,12 +526,14 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
             return false
           else
             air_loop_hvac_unitary_system.addToNode(remaining_node)
-            air_loop_hvac_unitary_system_cooling.addToNode(remaining_node)           
+            air_loop_hvac_unitary_system_cooling.addToNode(remaining_node) 
+            air_loop_hvac_unitary_system_heating.addToNode(remaining_node)            
           end
           
           # Change the unitary system control type to setpoint to enable the VAV fan to ramp down.
           air_loop_hvac_unitary_system.setString(2,"Setpoint")
           air_loop_hvac_unitary_system_cooling.setString(2,"Setpoint") 
+          air_loop_hvac_unitary_system_heating.setString(2,"Setpoint")
           # Add the VAV fan to the AirLoopHVAC:UnitarySystem object
           air_loop_hvac_unitary_system.setSupplyFan(vav_fan)
           
@@ -763,6 +767,7 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
       end
       #attach setpoint managers now that everything else is deleted
       setpoint_mgr_heating.addToNode(air_loop_hvac_unitary_system.airOutletModelObject.get.to_Node.get)
+      setpoint_mgr_heating_sup.addToNode(air_loop_hvac_unitary_system.airOutletModelObject.get.to_Node.get)
       setpoint_mgr_cooling.addToNode(air_loop_hvac_unitary_system_cooling.airOutletModelObject.get.to_Node.get)
       
       # Set the controlling zone location to the zone on the airloop
@@ -794,6 +799,7 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
             air_loop_hvac_unitary_system_cooling.setControllingZoneorThermostatLocation(term_zone)
             setpoint_mgr_cooling.setControlZone(term_zone)
             setpoint_mgr_heating.setControlZone(term_zone)
+            setpoint_mgr_heating_sup.setControlZone(term_zone)
             #Add Zone to EMS init program
             term_zone_handle = term_zone.handle
             term_zone_name = term_zone.name
