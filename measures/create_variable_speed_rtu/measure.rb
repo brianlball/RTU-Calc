@@ -32,7 +32,7 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
     #looping through sorted hash of air loops
     air_loop_args_hash.sort.map do |air_loop_name,air_loop|
       #check airloop name not end in SAC
-      if air_loop_name[-4,4] != " SAC"
+     # if air_loop_name[-4,4] != " SAC"
         #find airterminals
         air_loop.demandComponents.each do |demand_comp|
           if demand_comp.to_AirTerminalSingleDuctUncontrolled.is_initialized
@@ -64,7 +64,7 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
             end
           end
         end
-      end
+     # end
     end
     return air_loop_display_names, air_loop_handles
   end
@@ -526,8 +526,9 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
             return false
           else
             air_loop_hvac_unitary_system.addToNode(remaining_node)
+            air_loop_hvac_unitary_system_heating.addToNode(remaining_node) 
             air_loop_hvac_unitary_system_cooling.addToNode(remaining_node) 
-            air_loop_hvac_unitary_system_heating.addToNode(remaining_node)            
+                       
           end
           
           # Change the unitary system control type to setpoint to enable the VAV fan to ramp down.
