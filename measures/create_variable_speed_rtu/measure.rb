@@ -635,7 +635,7 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
           #end
           existing_cooling_coil = supply_comp
           # Remove the existing heating coil.
-          existing_cooling_coil.remove
+          #existing_cooling_coil.remove
           
           # Add a new cooling coil object
           if cooling_coil_type == "Two-Stage Compressor"
@@ -688,7 +688,7 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
           #end
           existing_heating_coil = supply_comp
           # Remove the existing heating coil.
-          existing_heating_coil.remove
+          #existing_heating_coil.remove
 
           # Add a new heating coil object
           if heating_coil_type == "Gas Heating Coil"
@@ -731,7 +731,20 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
         end  #end heating coil
          
       end #next supply component
-      
+      #OA node deletion fix
+      air_loop.supplyComponents.each do |supply_comp|
+        if supply_comp.to_CoilCoolingDXTwoSpeed.is_initialized || supply_comp.to_CoilCoolingDXSingleSpeed.is_initialized
+          existing_cooling_coil = supply_comp
+          # Remove the existing cooling coil.
+          existing_cooling_coil.remove        
+        end
+        if supply_comp.to_CoilHeatingGas.is_initialized || supply_comp.to_CoilHeatingDXSingleSpeed.is_initialized
+          existing_heating_coil = supply_comp
+          # Remove the existing heating coil.
+          existing_heating_coil.remove        
+        end
+      end
+
       # Find the supply outlet node for the current AirLoop
       airloop_outlet_node = air_loop.supplyOutletNode
       
