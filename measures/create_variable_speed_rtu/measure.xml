@@ -2,23 +2,13 @@
   <schema_version>3.0</schema_version>
   <name>create_variable_speed_rtu</name>
   <uid>7fb36b3a-5591-4627-a2b0-7709fbeae593</uid>
-  <version_id>3f4d4c2b-9bfa-48c4-9ccd-8b056d946b0c</version_id>
-  <version_modified>20161216T165240Z</version_modified>
+  <version_id>6ad88750-3c9e-4d1a-a898-021a823d617b</version_id>
+  <version_modified>20161216T202709Z</version_modified>
   <xml_checksum>A9D5932A</xml_checksum>
   <class_name>CreateVariableSpeedRTU</class_name>
   <display_name>Create Variable Speed RTU</display_name>
-  <description>This measure examines the existing HVAC system(s) present in the current OpenStudio model. If a constant-speed system is found, the user can opt to have the measure replace that system with a variable-speed RTU. 'Variable speed' in this case means that the compressor will be operated using either two or four stages (user's choice). The user can choose between using a gas heating coil, or a direct-expansion (DX) heating coil. Additionally, the user is able to enter the EER (cooling) and COP (heating) values for each DX stage. This measure allows users to easily identify the impact of improved part-load efficiency.
-  This measure adds control logic for a variable-speed RTU to the model. The control logic is responsible for staging the fan in response to the amount of heating/cooling required. It is meant to be paired specifically with the Create Variable Speed RTU OpenStudio measure. Users enter the fan flow rate fractions for up to nine different stages: ventilation, up to four cooling stages, and up to four heating stages. The measure examines the amount of heating/cooling required at each time step, identifies which heating/cooling stage is required to supply that amount of heating/cooling, and modifies the fan flow accordingly. This measure allows users to identify the impact of different fan flow control strategies.</description>
-  <modeler_description>This measure loops through the existing airloops, looking for loops that have a constant speed fan. (Note that if an object such as an AirloopHVAC:UnitarySystem is present in the model, that the measure will NOT identify that loop as either constant- or variable-speed, since the fan is located inside the UnitarySystem object.) The user can designate which constant-speed airloop they'd like to apply the measure to, or opt to apply the measure to all airloops. The measure then replaces the supply components on the airloop with an AirloopHVAC:UnitarySystem object. Any DX coils added to the UnitarySystem object are of the type CoilCoolingDXMultiSpeed / CoilHeatingDXMultiSpeed, with the number of stages set to either two or four, depending on user input. If the user opts for a gas furnace, an 80% efficient CoilHeatingGas object is added. Fan properties (pressure rise and total efficiency) are transferred automatically from the existing (but deleted) constant speed fan to the new variable-speed fan. Currently, this measure is only applicable to the Standalone Retail DOE Prototype building model, but it has been structured to facilitate expansion to other models with a minimum of effort.
-  
-  Users can select the fan mass flow fractions for up to nine stages (ventilation, two or four cooling, and two or four heating). The default control logic is as follows:
-When the unit is ventilating (heating and cooling coil energy is zero), the fan flow rate is set to 40% of nominal.
-When the unit is in heating (gas heating coil), the fan flow rate is set to 100% of nominal (not changeable).
-When the unit is in staged heating/cooling, as indicated by the current heating/cooling coil energy rate divided by the nominal heating/cooling coil size, the fan flow rate is set to either 50/100% (two-stage compressor), or 40/50/75/100% (four-stage compressor).
-
-When applied to staged coils, the measure assumes that all stages are of equal capacity. That is, for two-speed coils, that the compressors are split 50/50, and that in four-stage units, that each of the four compressors represents 25% of the total capacity.
-
-The measure is set up so that a separate block of EMS code is inserted for each applicable airloop (i.e., the EMS text is not hard-coded).</modeler_description>
+  <description>This measure examines the existing HVAC system(s) present in the current OpenStudio model. If a constant-speed system is found, the user can opt to have the measure replace that system with a variable-speed RTU. 'Variable speed' in this case means that the compressor will be operated using either two or four stages (user's choice). The user can choose between using a gas heating coil, or a direct-expansion (DX) heating coil. Additionally, the user is able to enter the EER (cooling) and COP (heating) values for each DX stage. This measure allows users to easily identify the impact of improved part-load efficiency.</description>
+  <modeler_description>This measure loops through the existing airloops, looking for loops that have a constant speed fan. (Note that if an object such as an AirloopHVAC:UnitarySystem is present in the model, that the measure will NOT identify that loop as either constant- or variable-speed, since the fan is located inside the UnitarySystem object.) The user can designate which constant-speed airloop they'd like to apply the measure to, or opt to apply the measure to all airloops. The measure then replaces the supply components on the airloop with an AirloopHVAC:UnitarySystem object. Any DX coils added to the UnitarySystem object are of the type CoilCoolingDXMultiSpeed / CoilHeatingDXMultiSpeed, with the number of stages set to either two or four, depending on user input. If the user opts for a gas furnace, an 80% efficient CoilHeatingGas object is added. Fan properties (pressure rise and total efficiency) are transferred automatically from the existing (but deleted) constant speed fan to the new variable-speed fan. Currently, this measure is only applicable to the Standalone Retail DOE Prototype building model, but it has been structured to facilitate expansion to other models with a minimum of effort.</modeler_description>
   <arguments>
     <argument>
       <name>object</name>
@@ -29,7 +19,7 @@ The measure is set up so that a separate block of EMS code is inserted for each 
       <default_value>*All CAV Air Loops*</default_value>
       <choices>
         <choice>
-          <value>{1c1f51a5-7be0-4e22-93ad-f01a704170ae}</value>
+          <value>{ee33ad61-70e8-4e73-aa82-bbc2e508c823}</value>
           <display_name>*All CAV Air Loops*</display_name>
         </choice>
       </choices>
@@ -273,7 +263,7 @@ The measure is set up so that a separate block of EMS code is inserted for each 
       <filename>measure.rb</filename>
       <filetype>rb</filetype>
       <usage_type>script</usage_type>
-      <checksum>BB4BBC64</checksum>
+      <checksum>7D544DF4</checksum>
     </file>
   </files>
 </measure>

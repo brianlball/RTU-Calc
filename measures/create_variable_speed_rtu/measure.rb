@@ -378,6 +378,10 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
           selected_airloops << airloop
         end
       end
+      if selected_airloops.length == 0
+        runner.registerAsNotApplicable("This measure is not applicable; no variable speed RTUs were added.")
+        return true
+      end
     else
       selected_airloops << selected_airloop
     end
@@ -905,11 +909,15 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
       cc_sensor = OpenStudio::Model::EnergyManagementSystemSensor.new(model, "Cooling Coil Total Cooling Rate")
       cc_sensor.setKeyName(cc_handle.to_s)
       cc_sensor.setName("#{cc_name}_cooling_rate")   
-
-      hc_sensor = OpenStudio::Model::EnergyManagementSystemSensor.new(model, "Heating Coil Air Heating Rate")
-      hc_sensor.setKeyName(hc_handle.to_s)
-      hc_sensor.setName("#{hc_name}_heating_rate")      
-          
+      if heating_coil_type == "Gas Heating Coil"
+        hc_sensor = OpenStudio::Model::EnergyManagementSystemSensor.new(model, "Heating Coil Air Heating Rate")
+        hc_sensor.setKeyName(hc_handle.to_s)
+        hc_sensor.setName("#{hc_name}_heating_rate")      
+      else
+        hc_sensor = OpenStudio::Model::EnergyManagementSystemSensor.new(model, "Heating Coil Total Heating Rate")
+        hc_sensor.setKeyName(hc_handle.to_s)
+        hc_sensor.setName("#{hc_name}_heating_rate")
+      end
       ems_design_heat_internal = OpenStudio::Model::EnergyManagementSystemInternalVariable.new(model, "Unitary HVAC Design Heating Capacity")
       ems_design_heat_internal.setName("#{air_loop_hvac_unitary_system.name}_heating_cap")
       ems_design_heat_internal.setInternalDataIndexKeyName("#{air_loop_hvac_unitary_system.name}")
@@ -1033,17 +1041,14 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
 
     end # Next selected airloop
     #add Output:EnergyManagementSystem to model
-    model.getOutputEnergyManagementSystem()
+    out_ems = model.getOutputEnergyManagementSystem()
+    out_ems.setEMSRuntimeLanguageDebugOutputLevel("Verbose")
     
     # Report final condition of model
     final_air_loop_handles = OpenStudio::StringVector.new
     final_air_loop_display_names = OpenStudio::StringVector.new
     final_air_loop_display_names, final_air_loop_handles = airloop_chooser(model)
     runner.registerFinalCondition("The building finished with #{final_air_loop_handles.size} constant-speed RTUs.") 
-    
-    if final_air_loop_handles.size == air_loop_handles.size
-      runner.registerAsNotApplicable("This measure is not applicable; no variable speed RTUs were added.")
-    end
    
     return true
  
