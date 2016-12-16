@@ -173,6 +173,60 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
     quarter_hc_cop.setDefaultValue(2.0)
     args << quarter_hc_cop
     
+        #make an argument for ventilation fan speed fraction
+    vent_fan_speed = OpenStudio::Ruleset::OSArgument::makeDoubleArgument('vent_fan_speed', false)
+    vent_fan_speed.setDisplayName("Fan speed fraction during ventilation mode.")
+    vent_fan_speed.setDefaultValue(0.4)
+    args << vent_fan_speed
+
+    #make an argument for stage_one cooling fan speed fraction
+    stage_one_cooling_fan_speed = OpenStudio::Ruleset::OSArgument::makeDoubleArgument('stage_one_cooling_fan_speed', false)
+    stage_one_cooling_fan_speed.setDisplayName("Fan speed fraction during stage one DX cooling.")
+    stage_one_cooling_fan_speed.setDefaultValue(0.4)
+    args << stage_one_cooling_fan_speed
+
+    #make an argument for stage_two cooling fan speed fraction
+    stage_two_cooling_fan_speed = OpenStudio::Ruleset::OSArgument::makeDoubleArgument('stage_two_cooling_fan_speed', false)
+    stage_two_cooling_fan_speed.setDisplayName("Fan speed fraction during stage two DX cooling.")
+    stage_two_cooling_fan_speed.setDefaultValue(0.5)
+    args << stage_two_cooling_fan_speed
+
+    #make an argument for stage_three cooling fan speed fraction
+    stage_three_cooling_fan_speed = OpenStudio::Ruleset::OSArgument::makeDoubleArgument('stage_three_cooling_fan_speed', false)
+    stage_three_cooling_fan_speed.setDisplayName("Fan speed fraction during stage three DX cooling. Not used for two-speed systems.")
+    stage_three_cooling_fan_speed.setDefaultValue(0.75)
+    args << stage_three_cooling_fan_speed
+
+    #make an argument for stage_four cooling fan speed fraction
+    stage_four_cooling_fan_speed = OpenStudio::Ruleset::OSArgument::makeDoubleArgument('stage_four_cooling_fan_speed', false)
+    stage_four_cooling_fan_speed.setDisplayName("Fan speed fraction during stage four DX cooling. Not used for two-speed systems.")
+    stage_four_cooling_fan_speed.setDefaultValue(1.0)
+    args << stage_four_cooling_fan_speed
+
+    #make an argument for stage_one heating fan speed fraction
+    stage_one_heating_fan_speed = OpenStudio::Ruleset::OSArgument::makeDoubleArgument('stage_one_heating_fan_speed', false)
+    stage_one_heating_fan_speed.setDisplayName("Fan speed fraction during stage one DX heating.")
+    stage_one_heating_fan_speed.setDefaultValue(0.4)
+    args << stage_one_heating_fan_speed
+
+    #make an argument for stage_two heating fan speed fraction
+    stage_two_heating_fan_speed = OpenStudio::Ruleset::OSArgument::makeDoubleArgument('stage_two_heating_fan_speed', false)
+    stage_two_heating_fan_speed.setDisplayName("Fan speed fraction during stage two DX heating.")
+    stage_two_heating_fan_speed.setDefaultValue(0.5)
+    args << stage_two_heating_fan_speed
+
+    #make an argument for stage_three heating fan speed fraction
+    stage_three_heating_fan_speed = OpenStudio::Ruleset::OSArgument::makeDoubleArgument('stage_three_heating_fan_speed', false)
+    stage_three_heating_fan_speed.setDisplayName("Fan speed fraction during stage three DX heating. Not used for two-speed systems.")
+    stage_three_heating_fan_speed.setDefaultValue(0.75)
+    args << stage_three_heating_fan_speed
+
+    #make an argument for stage_four heating fan speed fraction
+    stage_four_heating_fan_speed = OpenStudio::Ruleset::OSArgument::makeDoubleArgument('stage_four_heating_fan_speed', false)
+    stage_four_heating_fan_speed.setDisplayName("Fan speed fraction during stage four DX heating. Not used for two-speed systems.")
+    stage_four_heating_fan_speed.setDefaultValue(1.0)
+    args << stage_four_heating_fan_speed
+    
     return args
   end #end the arguments method
 
@@ -198,6 +252,17 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
     three_quarter_hc_cop = runner.getOptionalDoubleArgumentValue("three_quarter_hc_cop",user_arguments)
     half_hc_cop = runner.getOptionalDoubleArgumentValue("half_hc_cop",user_arguments)
     quarter_hc_cop = runner.getOptionalDoubleArgumentValue("quarter_hc_cop",user_arguments)
+    #old E+ measure ags
+    vent_fan_speed = runner.getOptionalDoubleArgumentValue("vent_fan_speed",user_arguments)
+    stage_one_cooling_fan_speed = runner.getOptionalDoubleArgumentValue("stage_one_cooling_fan_speed",user_arguments)    
+    stage_two_cooling_fan_speed = runner.getOptionalDoubleArgumentValue("stage_two_cooling_fan_speed",user_arguments)    
+    stage_three_cooling_fan_speed = runner.getOptionalDoubleArgumentValue("stage_three_cooling_fan_speed",user_arguments) 
+    stage_four_cooling_fan_speed = runner.getOptionalDoubleArgumentValue("stage_four_cooling_fan_speed",user_arguments)
+    stage_one_heating_fan_speed = runner.getOptionalDoubleArgumentValue("stage_one_heating_fan_speed",user_arguments)    
+    stage_two_heating_fan_speed = runner.getOptionalDoubleArgumentValue("stage_two_heating_fan_speed",user_arguments)    
+    stage_three_heating_fan_speed = runner.getOptionalDoubleArgumentValue("stage_three_heating_fan_speed",user_arguments) 
+    stage_four_heating_fan_speed = runner.getOptionalDoubleArgumentValue("stage_four_heating_fan_speed",user_arguments)
+    
     
     if rated_cc_eer.empty?
       runner.registerError("User must enter a value for the rated capacity cooling coil EER.")
@@ -345,17 +410,6 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
       fan_mass_flow_actuator_handle = nil
       terminal_actuator_handle = nil
       number_of_cooling_speeds = nil
-      
-      #TODO change to user inputs
-      vent_fan_speed = 0.4
-      stage_one_cooling_fan_speed = 0.4    
-      stage_two_cooling_fan_speed = 0.5    
-      stage_three_cooling_fan_speed = 0.75 
-      stage_four_cooling_fan_speed = 1
-      stage_one_heating_fan_speed = 0.4    
-      stage_two_heating_fan_speed = 0.5    
-      stage_three_heating_fan_speed = 0.75
-      stage_four_heating_fan_speed = 1.0
     
       number_of_heat_coils = 0
       number_of_heat_coils = number_heatcoils(air_loop)
@@ -978,7 +1032,9 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
       pcm.addProgram(hc_control_program)
 
     end # Next selected airloop
-
+    #add Output:EnergyManagementSystem to model
+    model.getOutputEnergyManagementSystem()
+    
     # Report final condition of model
     final_air_loop_handles = OpenStudio::StringVector.new
     final_air_loop_display_names = OpenStudio::StringVector.new
