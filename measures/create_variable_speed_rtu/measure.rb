@@ -1042,7 +1042,7 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
     end # Next selected airloop
     #add Output:EnergyManagementSystem to model
     out_ems = model.getOutputEnergyManagementSystem()
-    out_ems.setEMSRuntimeLanguageDebugOutputLevel("Verbose")
+    #out_ems.setEMSRuntimeLanguageDebugOutputLevel("Verbose")
     
     # Report final condition of model
     final_air_loop_handles = OpenStudio::StringVector.new
