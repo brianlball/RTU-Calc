@@ -32,7 +32,7 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
     #looping through sorted hash of air loops
     air_loop_args_hash.sort.map do |air_loop_name,air_loop|
       #check airloop name not end in SAC
-     # if air_loop_name[-4,4] != " SAC"
+      if air_loop_name[-4,4] != " SAC"
         #find airterminals
         air_loop.demandComponents.each do |demand_comp|
           if demand_comp.to_AirTerminalSingleDuctUncontrolled.is_initialized
@@ -64,9 +64,20 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
             end
           end
         end
-     # end
+      end  # name check
     end
     return air_loop_display_names, air_loop_handles
+  end
+  
+  def number_heatcoils(air_loop)
+    #loop through supply components and count heating coils
+    num_coils = 0
+    air_loop.supplyComponents.each do |sc|
+      if sc.to_CoilHeatingGas.is_initialized || sc.to_CoilHeatingDXSingleSpeed.is_initialized || sc.to_CoilHeatingElectric.is_initialized
+        num_coils += 1
+      end
+    end
+    return num_coils
   end
 
   #define the arguments that the user will input
@@ -346,6 +357,9 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
       stage_three_heating_fan_speed = 0.75
       stage_four_heating_fan_speed = 1.0
     
+      number_of_heat_coils = 0
+      number_of_heat_coils = number_heatcoils(air_loop)
+      runner.registerInfo("number of heat coils: #{number_of_heat_coils}")
           
       # Identify original AirLoopHVACUnitaryHeatPumpAirToAir
       air_loop.supplyComponents.each do |supply_comp|      
@@ -464,6 +478,8 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
           
           supplementalHeat = supply_comp.to_AirLoopHVACUnitaryHeatPumpAirToAir.get.supplementalHeatingCoil
           if supplementalHeat.to_CoilHeatingElectric.is_initialized
+            number_of_heat_coils = 2
+            runner.registerInfo("setting number of heat coils to 2:")
             supplementalHeat = supply_comp.to_AirLoopHVACUnitaryHeatPumpAirToAir.get.supplementalHeatingCoil.to_CoilHeatingElectric.get
             air_loop_hvac_unitary_system_heating.setHeatingCoil(supplementalHeat)
             runner.registerInfo("supplementalHeat #{air_loop_hvac_unitary_system_heating.heatingCoil.get.to_s}")
@@ -471,6 +487,8 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
             temp = OpenStudio::Model::CoilHeatingGas.new(model)
             supply_comp.to_AirLoopHVACUnitaryHeatPumpAirToAir.get.setSupplementalHeatingCoil(temp)
           elsif supplementalHeat.to_CoilHeatingGas.is_initialized
+            number_of_heat_coils = 2
+            runner.registerInfo("setting number of heat coils to 2:")
             supplementalHeat = supply_comp.to_AirLoopHVACUnitaryHeatPumpAirToAir.get.supplementalHeatingCoil.to_CoilHeatingGas.get
             air_loop_hvac_unitary_system_heating.setHeatingCoil(supplementalHeat)
             runner.registerInfo("supplementalHeat #{air_loop_hvac_unitary_system_heating.heatingCoil.get.to_s}")
@@ -527,8 +545,7 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
           else
             air_loop_hvac_unitary_system.addToNode(remaining_node)
             air_loop_hvac_unitary_system_heating.addToNode(remaining_node) 
-            air_loop_hvac_unitary_system_cooling.addToNode(remaining_node) 
-                       
+            air_loop_hvac_unitary_system_cooling.addToNode(remaining_node)                        
           end
           
           # Change the unitary system control type to setpoint to enable the VAV fan to ramp down.
@@ -552,7 +569,7 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
       end #next supply component
       
       # Find CAV/OnOff fan and replace with VAV fan
-      air_loop.supplyComponents.each do |supply_comp|
+      air_loop.supplyComponents.each do |supply_comp|       
         # Identify original fan from loop
         found_fan = false
         if supply_comp.to_FanConstantVolume.is_initialized
@@ -609,12 +626,14 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
             return false
           else
             air_loop_hvac_unitary_system.addToNode(remaining_node)
-            air_loop_hvac_unitary_system_cooling.addToNode(remaining_node)           
+            air_loop_hvac_unitary_system_heating.addToNode(remaining_node)
+            air_loop_hvac_unitary_system_cooling.addToNode(remaining_node)            
           end
           
           # Change the unitary system control type to setpoint to enable the VAV fan to ramp down.
           air_loop_hvac_unitary_system.setString(2,"Setpoint")
           air_loop_hvac_unitary_system_cooling.setString(2,"Setpoint") 
+          air_loop_hvac_unitary_system_heating.setString(2,"Setpoint")
           # Add the VAV fan to the AirLoopHVAC:UnitarySystem object
           air_loop_hvac_unitary_system.setSupplyFan(vav_fan)
           
@@ -684,58 +703,76 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
           end          
         end  #end cooling coil
       
+        #only look for electric heat if there are more than 1 heat coils
+        if number_of_heat_coils == 2
+          if supply_comp.to_CoilHeatingElectric.is_initialized
+            #its a supplemental coil
+            supplementalHeat = supply_comp.to_CoilHeatingElectric.get
+            air_loop_hvac_unitary_system_heating.setHeatingCoil(supplementalHeat)
+          end
+        end
       # Move the heating coil to the AirLoopHVAC:UnitarySystem object
         if supply_comp.to_CoilHeatingGas.is_initialized || supply_comp.to_CoilHeatingDXSingleSpeed.is_initialized
-          #if supply_comp.to_CoilHeatingGas.is_initialized
-          #  existing_heating_coil = supply_comp.to_CoilHeatingGas.get
-          #elsif supply_comp.to_CoilHeatingDXSingleSpeed.is_initialized
-          #  existing_heating_coil = supply_comp.to_CoilHeatingDXSingleSpeed.get
-          #end
-          existing_heating_coil = supply_comp
-          # Remove the existing heating coil.
-          #existing_heating_coil.remove
-
-          # Add a new heating coil object
-          if heating_coil_type == "Gas Heating Coil"
-            new_heating_coil = OpenStudio::Model::CoilHeatingGas.new(model)      
-            hc_handle = new_heating_coil.handle 
-            hc_name = new_heating_coil.name            
-            new_heating_coil.setGasBurnerEfficiency(rated_hc_gas_efficiency.to_f)
-            air_loop_hvac_unitary_system.setHeatingCoil(new_heating_coil)               
-          elsif heating_coil_type == "Heat Pump" && cooling_coil_type == "Two-Stage Compressor"
-            new_heating_coil = OpenStudio::Model::CoilHeatingDXMultiSpeed.new(model)
-            hc_handle = new_heating_coil.handle
-            hc_name = new_heating_coil.name
-            new_heating_coil_data_1 = OpenStudio::Model::CoilHeatingDXMultiSpeedStageData.new(model)
-            new_heating_coil_data_1.setGrossRatedHeatingCOP(half_hc_cop.to_f)
-            new_heating_coil_data_2 = OpenStudio::Model::CoilHeatingDXMultiSpeedStageData.new(model)
-            new_heating_coil_data_2.setGrossRatedHeatingCOP(rated_hc_cop.to_f)
-            new_heating_coil.setFuelType("Electricity")
-            new_heating_coil.addStage(new_heating_coil_data_1)
-            new_heating_coil.addStage(new_heating_coil_data_2)
-            air_loop_hvac_unitary_system.setHeatingCoil(new_heating_coil)
-          elsif heating_coil_type == "Heat Pump" && cooling_coil_type == "Four-Stage Compressor"
-            new_heating_coil = OpenStudio::Model::CoilHeatingDXMultiSpeed.new(model)
-            hc_handle = new_heating_coil.handle
-            hc_name = new_heating_coil.name
-            new_heating_coil_data_1 = OpenStudio::Model::CoilHeatingDXMultiSpeedStageData.new(model)
-            new_heating_coil_data_1.setGrossRatedHeatingCOP(quarter_hc_cop.to_f)
-            new_heating_coil_data_2 = OpenStudio::Model::CoilHeatingDXMultiSpeedStageData.new(model)
-            new_heating_coil_data_2.setGrossRatedHeatingCOP(half_hc_cop.to_f)
-            new_heating_coil_data_3 = OpenStudio::Model::CoilHeatingDXMultiSpeedStageData.new(model)
-            new_heating_coil_data_3.setGrossRatedHeatingCOP(three_quarter_hc_cop.to_f)
-            new_heating_coil_data_4 = OpenStudio::Model::CoilHeatingDXMultiSpeedStageData.new(model)
-            new_heating_coil_data_4.setGrossRatedHeatingCOP(rated_hc_cop.to_f)
-            new_heating_coil.setFuelType("Electricity")
-            new_heating_coil.addStage(new_heating_coil_data_1)
-            new_heating_coil.addStage(new_heating_coil_data_2)
-            new_heating_coil.addStage(new_heating_coil_data_3)
-            new_heating_coil.addStage(new_heating_coil_data_4)
-            air_loop_hvac_unitary_system.setHeatingCoil(new_heating_coil)
-          end         
+          #check if heating coil is supplemental
+          is_supp = 0
+          if supply_comp.to_CoilHeatingGas.is_initialized
+            if number_of_heat_coils == 2
+              if supply_comp.to_CoilHeatingGas.get.name.to_s.include? "Backup"
+                is_supp = 1
+              end              
+            end
+          end
+          if is_supp == 1
+            #its a supplemental coil
+            supplementalHeat = supply_comp.to_CoilHeatingGas.get
+            air_loop_hvac_unitary_system_heating.setHeatingCoil(supplementalHeat)
+          else
+            # Add a new heating coil object
+            if heating_coil_type == "Gas Heating Coil"
+              new_heating_coil = OpenStudio::Model::CoilHeatingGas.new(model)      
+              hc_handle = new_heating_coil.handle 
+              hc_name = new_heating_coil.name            
+              new_heating_coil.setGasBurnerEfficiency(rated_hc_gas_efficiency.to_f)
+              air_loop_hvac_unitary_system.setHeatingCoil(new_heating_coil)               
+            elsif heating_coil_type == "Heat Pump" && cooling_coil_type == "Two-Stage Compressor"
+              new_heating_coil = OpenStudio::Model::CoilHeatingDXMultiSpeed.new(model)
+              hc_handle = new_heating_coil.handle
+              hc_name = new_heating_coil.name
+              new_heating_coil_data_1 = OpenStudio::Model::CoilHeatingDXMultiSpeedStageData.new(model)
+              new_heating_coil_data_1.setGrossRatedHeatingCOP(half_hc_cop.to_f)
+              new_heating_coil_data_2 = OpenStudio::Model::CoilHeatingDXMultiSpeedStageData.new(model)
+              new_heating_coil_data_2.setGrossRatedHeatingCOP(rated_hc_cop.to_f)
+              new_heating_coil.setFuelType("Electricity")
+              new_heating_coil.addStage(new_heating_coil_data_1)
+              new_heating_coil.addStage(new_heating_coil_data_2)
+              air_loop_hvac_unitary_system.setHeatingCoil(new_heating_coil)
+            elsif heating_coil_type == "Heat Pump" && cooling_coil_type == "Four-Stage Compressor"
+              new_heating_coil = OpenStudio::Model::CoilHeatingDXMultiSpeed.new(model)
+              hc_handle = new_heating_coil.handle
+              hc_name = new_heating_coil.name
+              new_heating_coil_data_1 = OpenStudio::Model::CoilHeatingDXMultiSpeedStageData.new(model)
+              new_heating_coil_data_1.setGrossRatedHeatingCOP(quarter_hc_cop.to_f)
+              new_heating_coil_data_2 = OpenStudio::Model::CoilHeatingDXMultiSpeedStageData.new(model)
+              new_heating_coil_data_2.setGrossRatedHeatingCOP(half_hc_cop.to_f)
+              new_heating_coil_data_3 = OpenStudio::Model::CoilHeatingDXMultiSpeedStageData.new(model)
+              new_heating_coil_data_3.setGrossRatedHeatingCOP(three_quarter_hc_cop.to_f)
+              new_heating_coil_data_4 = OpenStudio::Model::CoilHeatingDXMultiSpeedStageData.new(model)
+              new_heating_coil_data_4.setGrossRatedHeatingCOP(rated_hc_cop.to_f)
+              new_heating_coil.setFuelType("Electricity")
+              new_heating_coil.addStage(new_heating_coil_data_1)
+              new_heating_coil.addStage(new_heating_coil_data_2)
+              new_heating_coil.addStage(new_heating_coil_data_3)
+              new_heating_coil.addStage(new_heating_coil_data_4)
+              air_loop_hvac_unitary_system.setHeatingCoil(new_heating_coil)
+            end    
+          end  #is_supp
         end  #end heating coil
          
       end #next supply component
+      #remove supplemental unitary system if not needed
+      if number_of_heat_coils < 2
+        air_loop_hvac_unitary_system_heating.remove
+      end
       #OA node deletion fix
       air_loop.supplyComponents.each do |supply_comp|
         if supply_comp.to_CoilCoolingDXTwoSpeed.is_initialized || supply_comp.to_CoilCoolingDXSingleSpeed.is_initialized
@@ -743,7 +780,7 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
           # Remove the existing cooling coil.
           existing_cooling_coil.remove        
         end
-        if supply_comp.to_CoilHeatingGas.is_initialized || supply_comp.to_CoilHeatingDXSingleSpeed.is_initialized
+        if supply_comp.to_CoilHeatingGas.is_initialized || supply_comp.to_CoilHeatingDXSingleSpeed.is_initialized || supply_comp.to_CoilHeatingElectric.is_initialized
           existing_heating_coil = supply_comp
           # Remove the existing heating coil.
           existing_heating_coil.remove        
@@ -768,7 +805,9 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
       end
       #attach setpoint managers now that everything else is deleted
       setpoint_mgr_heating.addToNode(air_loop_hvac_unitary_system.airOutletModelObject.get.to_Node.get)
-      setpoint_mgr_heating_sup.addToNode(air_loop_hvac_unitary_system.airOutletModelObject.get.to_Node.get)
+      if number_of_heat_coils == 2
+        setpoint_mgr_heating_sup.addToNode(air_loop_hvac_unitary_system_heating.airOutletModelObject.get.to_Node.get)
+      end
       setpoint_mgr_cooling.addToNode(air_loop_hvac_unitary_system_cooling.airOutletModelObject.get.to_Node.get)
       
       # Set the controlling zone location to the zone on the airloop
