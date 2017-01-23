@@ -112,26 +112,26 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
     
     #make an argument for rated cooling coil EER
     rated_cc_eer = OpenStudio::Ruleset::OSArgument::makeDoubleArgument('rated_cc_eer', false)
-    rated_cc_eer.setDisplayName("Rated Cooling Coil EER")
-    rated_cc_eer.setDefaultValue(15)
+    rated_cc_eer.setDisplayName("Rated Cooling Coil EER (EER does NOT include effect of evaporator fan)")
+    rated_cc_eer.setDefaultValue(9.7)
     args << rated_cc_eer
 
     #make an argument for 75% cooling coil EER
     three_quarter_cc_eer = OpenStudio::Ruleset::OSArgument::makeDoubleArgument('three_quarter_cc_eer', false)
-    three_quarter_cc_eer.setDisplayName("Cooling Coil EER at 75% Capacity")
-    three_quarter_cc_eer.setDefaultValue(13)
+    three_quarter_cc_eer.setDisplayName("Cooling Coil EER at 75% Capacity (EER does NOT include effect of evaporator fan)")
+    three_quarter_cc_eer.setDefaultValue(12.6)
     args << three_quarter_cc_eer
 
     #make an argument for 50% cooling coil EER
     half_cc_eer = OpenStudio::Ruleset::OSArgument::makeDoubleArgument('half_cc_eer', false)
-    half_cc_eer.setDisplayName("Cooling Coil EER at 50% Capacity")
-    half_cc_eer.setDefaultValue(11)
+    half_cc_eer.setDisplayName("Cooling Coil EER at 50% Capacity (EER does NOT include effect of evaporator fan)")
+    half_cc_eer.setDefaultValue(16.0)
     args << half_cc_eer
 
     #make an argument for 25% cooling coil EER
     quarter_cc_eer = OpenStudio::Ruleset::OSArgument::makeDoubleArgument('quarter_cc_eer', false)
-    quarter_cc_eer.setDisplayName("Cooling Coil EER at 25% Capacity")
-    quarter_cc_eer.setDefaultValue(9)
+    quarter_cc_eer.setDisplayName("Cooling Coil EER at 25% Capacity (EER does NOT include effect of evaporator fan)")
+    quarter_cc_eer.setDefaultValue(17.5)
     args << quarter_cc_eer
 
     #make an argument for heating type
@@ -151,50 +151,50 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
 
     #make an argument for rated heating coil COP
     rated_hc_cop = OpenStudio::Ruleset::OSArgument::makeDoubleArgument('rated_hc_cop', false)
-    rated_hc_cop.setDisplayName("Rated Heating Coil COP")
-    rated_hc_cop.setDefaultValue(3.5)
+    rated_hc_cop.setDisplayName("Rated Heating Coil COP (COP does NOT include effect of evaporator fan)")
+    rated_hc_cop.setDefaultValue(2.8)
     args << rated_hc_cop
 
     #make an argument for 75% heating coil COP
     three_quarter_hc_cop = OpenStudio::Ruleset::OSArgument::makeDoubleArgument('three_quarter_hc_cop', false)
-    three_quarter_hc_cop.setDisplayName("Heating Coil COP at 75% Capacity")
-    three_quarter_hc_cop.setDefaultValue(3.0)
+    three_quarter_hc_cop.setDisplayName("Heating Coil COP at 75% Capacity (COP does NOT include effect of evaporator fan)")
+    three_quarter_hc_cop.setDefaultValue(3.7)
     args << three_quarter_hc_cop
 
     #make an argument for 50% heating coil COP
     half_hc_cop = OpenStudio::Ruleset::OSArgument::makeDoubleArgument('half_hc_cop', false)
-    half_hc_cop.setDisplayName("Heating Coil COP at 50% Capacity")
-    half_hc_cop.setDefaultValue(2.5)
+    half_hc_cop.setDisplayName("Heating Coil COP at 50% Capacity (COP does NOT include effect of evaporator fan)")
+    half_hc_cop.setDefaultValue(4.7)
     args << half_hc_cop
 
     #make an argument for 25% heating coil COP
     quarter_hc_cop = OpenStudio::Ruleset::OSArgument::makeDoubleArgument('quarter_hc_cop', false)
-    quarter_hc_cop.setDisplayName("Heating Coil COP at 25% Capacity")
-    quarter_hc_cop.setDefaultValue(2.0)
+    quarter_hc_cop.setDisplayName("Heating Coil COP at 25% Capacity (COP does NOT include effect of evaporator fan)")
+    quarter_hc_cop.setDefaultValue(5.1)
     args << quarter_hc_cop
     
         #make an argument for ventilation fan speed fraction
     vent_fan_speed = OpenStudio::Ruleset::OSArgument::makeDoubleArgument('vent_fan_speed', false)
     vent_fan_speed.setDisplayName("Fan speed fraction during ventilation mode.")
-    vent_fan_speed.setDefaultValue(0.4)
+    vent_fan_speed.setDefaultValue(0.6)
     args << vent_fan_speed
 
     #make an argument for stage_one cooling fan speed fraction
     stage_one_cooling_fan_speed = OpenStudio::Ruleset::OSArgument::makeDoubleArgument('stage_one_cooling_fan_speed', false)
     stage_one_cooling_fan_speed.setDisplayName("Fan speed fraction during stage one DX cooling.")
-    stage_one_cooling_fan_speed.setDefaultValue(0.4)
+    stage_one_cooling_fan_speed.setDefaultValue(0.6)
     args << stage_one_cooling_fan_speed
 
     #make an argument for stage_two cooling fan speed fraction
     stage_two_cooling_fan_speed = OpenStudio::Ruleset::OSArgument::makeDoubleArgument('stage_two_cooling_fan_speed', false)
     stage_two_cooling_fan_speed.setDisplayName("Fan speed fraction during stage two DX cooling.")
-    stage_two_cooling_fan_speed.setDefaultValue(0.5)
+    stage_two_cooling_fan_speed.setDefaultValue(0.75)
     args << stage_two_cooling_fan_speed
 
     #make an argument for stage_three cooling fan speed fraction
     stage_three_cooling_fan_speed = OpenStudio::Ruleset::OSArgument::makeDoubleArgument('stage_three_cooling_fan_speed', false)
     stage_three_cooling_fan_speed.setDisplayName("Fan speed fraction during stage three DX cooling. Not used for two-speed systems.")
-    stage_three_cooling_fan_speed.setDefaultValue(0.75)
+    stage_three_cooling_fan_speed.setDefaultValue(0.85)
     args << stage_three_cooling_fan_speed
 
     #make an argument for stage_four cooling fan speed fraction
@@ -206,19 +206,19 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
     #make an argument for stage_one heating fan speed fraction
     stage_one_heating_fan_speed = OpenStudio::Ruleset::OSArgument::makeDoubleArgument('stage_one_heating_fan_speed', false)
     stage_one_heating_fan_speed.setDisplayName("Fan speed fraction during stage one DX heating.")
-    stage_one_heating_fan_speed.setDefaultValue(0.4)
+    stage_one_heating_fan_speed.setDefaultValue(0.6)
     args << stage_one_heating_fan_speed
 
     #make an argument for stage_two heating fan speed fraction
     stage_two_heating_fan_speed = OpenStudio::Ruleset::OSArgument::makeDoubleArgument('stage_two_heating_fan_speed', false)
     stage_two_heating_fan_speed.setDisplayName("Fan speed fraction during stage two DX heating.")
-    stage_two_heating_fan_speed.setDefaultValue(0.5)
+    stage_two_heating_fan_speed.setDefaultValue(0.75)
     args << stage_two_heating_fan_speed
 
     #make an argument for stage_three heating fan speed fraction
     stage_three_heating_fan_speed = OpenStudio::Ruleset::OSArgument::makeDoubleArgument('stage_three_heating_fan_speed', false)
     stage_three_heating_fan_speed.setDisplayName("Fan speed fraction during stage three DX heating. Not used for two-speed systems.")
-    stage_three_heating_fan_speed.setDefaultValue(0.75)
+    stage_three_heating_fan_speed.setDefaultValue(0.85)
     args << stage_three_heating_fan_speed
 
     #make an argument for stage_four heating fan speed fraction
