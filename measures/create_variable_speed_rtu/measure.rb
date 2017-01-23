@@ -386,6 +386,10 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
       selected_airloops << selected_airloop
     end
     
+    #add design day counter
+    dd = model.getDesignDays.size
+    dd_variable = OpenStudio::Model::EnergyManagementSystemGlobalVariable.new(model, "DesignDayCounter")
+    
     # Change HeatPumpAirToAir to VAV on the selected airloops, where applicable
     selected_airloops.each do |air_loop|
          
@@ -927,12 +931,13 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
       ems_design_cool_internal.setInternalDataIndexKeyName("#{air_loop_hvac_unitary_system.name}")
       
       zone_init_program = OpenStudio::Model::EnergyManagementSystemProgram.new(model)
-      zone_init_program.setName("#{term_zone_name}_Initialization_Prgm")
+      zone_init_program.setName("#{term_zone_name}_Initialization_Prgm")   
       zone_init_program.addLine("SET #{fan_mass_flow_actuator_handle} = null")
       zone_init_program.addLine("SET #{terminal_actuator_handle} = null")
       
       vent_control_program = OpenStudio::Model::EnergyManagementSystemProgram.new(model)
       vent_control_program.setName("#{term_zone_name}_Vent_Ctrl_Prgm") 
+      vent_control_program.addLine("IF CurrentEnvironment > #{dd}")
       vent_control_program.addLine("SET Current_Cooling_Capacity = #{cc_sensor.handle}")
       vent_control_program.addLine("SET Current_Heating_Capacity = #{hc_sensor.handle}")
       vent_control_program.addLine("SET Design_Fan_Mass_Flow = #{fan_mass_flow_rate_handle}")
@@ -941,10 +946,12 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
       vent_control_program.addLine("SET #{fan_mass_flow_actuator_handle} = Timestep_Fan_Mass_Flow")
       vent_control_program.addLine("SET #{terminal_actuator_handle} = Timestep_Fan_Mass_Flow, !- Added for test of two actuator code")
       vent_control_program.addLine("ENDIF")
+      vent_control_program.addLine("ENDIF")
       
       cc_control_program = OpenStudio::Model::EnergyManagementSystemProgram.new(model)
       if cooling_coil_type == "Two-Stage Compressor"
         cc_control_program.setName("#{term_zone_name}_CC_Ctrl_Prgm")   
+        cc_control_program.addLine("IF CurrentEnvironment > #{dd}")
         cc_control_program.addLine("SET Design_CC_Capacity = #{ems_design_cool_internal.handle}")
         cc_control_program.addLine("SET Current_Cooling_Capacity = #{cc_sensor.handle}")
         cc_control_program.addLine("SET Design_Fan_Mass_Flow = #{fan_mass_flow_rate_handle}")
@@ -956,9 +963,11 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
         cc_control_program.addLine("SET Timestep_Fan_Mass_Flow = (#{stage_two_cooling_fan_speed} * Design_Fan_Mass_Flow)")
         cc_control_program.addLine("SET #{terminal_actuator_handle} = Timestep_Fan_Mass_Flow")
         cc_control_program.addLine("SET #{fan_mass_flow_actuator_handle} = Timestep_Fan_Mass_Flow, !- Added for test of two actuator code")
-        cc_control_program.addLine("ENDIF")          
+        cc_control_program.addLine("ENDIF") 
+        cc_control_program.addLine("ENDIF")        
       elsif cooling_coil_type == "Four-Stage Compressor"       
         cc_control_program.setName("#{term_zone_name}_CC_Ctrl_Prgm")   
+        cc_control_program.addLine("IF CurrentEnvironment > #{dd}")
         cc_control_program.addLine("SET Design_CC_Capacity = #{ems_design_cool_internal.handle}")
         cc_control_program.addLine("SET Current_Cooling_Capacity = #{cc_sensor.handle}")
         cc_control_program.addLine("SET Design_Fan_Mass_Flow = #{fan_mass_flow_rate_handle}")
@@ -978,22 +987,26 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
         cc_control_program.addLine("SET Timestep_Fan_Mass_Flow = (#{stage_four_cooling_fan_speed} * Design_Fan_Mass_Flow)")
         cc_control_program.addLine("SET #{terminal_actuator_handle} = Timestep_Fan_Mass_Flow")
         cc_control_program.addLine("SET #{fan_mass_flow_actuator_handle} = Timestep_Fan_Mass_Flow, !- Added for test of two actuator code")
+        cc_control_program.addLine("ENDIF")     
         cc_control_program.addLine("ENDIF")        
       end
       
       hc_control_program = OpenStudio::Model::EnergyManagementSystemProgram.new(model)
       if heating_coil_type == "Gas Heating Coil"
         hc_control_program.setName("#{term_zone_name}_HC_Ctrl_Prgm")
+        hc_control_program.addLine("IF CurrentEnvironment > #{dd}")
         hc_control_program.addLine("SET Current_Heating_Capacity = #{hc_sensor.handle}")
         hc_control_program.addLine("SET Design_Fan_Mass_Flow = #{fan_mass_flow_rate_handle}")
         hc_control_program.addLine("IF Current_Heating_Capacity > 0")
         hc_control_program.addLine("SET Timestep_Fan_Mass_Flow = Design_Fan_Mass_Flow")
         hc_control_program.addLine("SET #{terminal_actuator_handle} = Timestep_Fan_Mass_Flow")
         hc_control_program.addLine("SET #{fan_mass_flow_actuator_handle} = Timestep_Fan_Mass_Flow, !- Added for test of two actuator code")
-        hc_control_program.addLine("ENDIF")	    
+        hc_control_program.addLine("ENDIF")	 
+        hc_control_program.addLine("ENDIF")         
       elsif heating_coil_type == "Heat Pump"
         if cooling_coil_type == "Two-Stage Compressor"
           hc_control_program.setName("#{term_zone_name}_HC_Ctrl_Prgm")   
+          hc_control_program.addLine("IF CurrentEnvironment > #{dd}")
           hc_control_program.addLine("SET Design_HC_Capacity = #{ems_design_cool_internal.handle}")
           hc_control_program.addLine("SET Current_Heating_Capacity = #{hc_sensor.handle}")
           hc_control_program.addLine("SET Design_Fan_Mass_Flow = #{fan_mass_flow_rate_handle}")
@@ -1005,9 +1018,11 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
           hc_control_program.addLine("SET Timestep_Fan_Mass_Flow = (#{stage_two_heating_fan_speed} * Design_Fan_Mass_Flow)")
           hc_control_program.addLine("SET #{terminal_actuator_handle} = Timestep_Fan_Mass_Flow")
           hc_control_program.addLine("SET #{fan_mass_flow_actuator_handle} = Timestep_Fan_Mass_Flow, !- Added for test of two actuator code")
-          hc_control_program.addLine("ENDIF")    
+          hc_control_program.addLine("ENDIF")   
+          hc_control_program.addLine("ENDIF")           
         elsif cooling_coil_type == "Four-Stage Compressor"
           hc_control_program.setName("#{term_zone_name}_HC_Ctrl_Prgm") 
+          hc_control_program.addLine("IF CurrentEnvironment > #{dd}")
           hc_control_program.addLine("SET Design_HC_Capacity = #{ems_design_cool_internal.handle}")
           hc_control_program.addLine("SET Current_Heating_Capacity = #{hc_sensor.handle}")
           hc_control_program.addLine("SET Design_Fan_Mass_Flow = #{fan_mass_flow_rate_handle}")
@@ -1027,7 +1042,8 @@ class CreateVariableSpeedRTU < OpenStudio::Ruleset::ModelUserScript
           hc_control_program.addLine("SET Timestep_Fan_Mass_Flow = (#{stage_four_heating_fan_speed} * Design_Fan_Mass_Flow)")
           hc_control_program.addLine("SET #{terminal_actuator_handle} = Timestep_Fan_Mass_Flow")
           hc_control_program.addLine("SET #{fan_mass_flow_actuator_handle} = Timestep_Fan_Mass_Flow, !- Added for test of two actuator code")
-          hc_control_program.addLine("ENDIF")         
+          hc_control_program.addLine("ENDIF")   
+          hc_control_program.addLine("ENDIF")           
         end
       end
       
